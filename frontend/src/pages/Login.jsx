@@ -25,6 +25,7 @@ const Login = () => {
       if (data.success) {
         localStorage.setItem('token', data.token)
         setToken(data.token)
+        navigate('/user-profile')
       } else {
         toast.error(data.message)
       }
@@ -36,6 +37,7 @@ const Login = () => {
       if (data.success) {
         localStorage.setItem('token', data.token)
         setToken(data.token)
+        navigate('/')
       } else {
         toast.error(data.message)
       }
@@ -45,10 +47,10 @@ const Login = () => {
   }
 
   useEffect(() => {
-    if (token) {
+    if (token && state === 'Login') {
       navigate('/')
     }
-  }, [token])
+  }, [token, state])
 
   return (
     <form onSubmit={onSubmitHandler} className='min-h-[80vh] flex items-center'>
