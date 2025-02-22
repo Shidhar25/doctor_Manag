@@ -10,3 +10,7 @@
 ::-webkit-scrollbar{
     display: none;
 }
+
+.w-36 {
+    width: 2rem;
+}
