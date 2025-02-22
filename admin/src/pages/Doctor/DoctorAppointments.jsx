@@ -1,13 +1,15 @@
 import React from 'react'
-import { useContext, useEffect } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { DoctorContext } from '../../context/DoctorContext'
 import { AppContext } from '../../context/AppContext'
 import { assets } from '../../assets/assets'
+import PatientDetailsModal from '../../components/PatientDetailsModal'
 
 const DoctorAppointments = () => {
 
   const { dToken, appointments, getAppointments, cancelAppointment, completeAppointment } = useContext(DoctorContext)
   const { slotDateFormat, calculateAge, currency } = useContext(AppContext)
+  const [selectedPatient, setSelectedPatient] = useState(null)
 
   useEffect(() => {
     if (dToken) {
@@ -34,7 +36,13 @@ const DoctorAppointments = () => {
           <div className='flex flex-wrap justify-between max-sm:gap-5 max-sm:text-base sm:grid grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr] gap-1 items-center text-gray-500 py-3 px-6 border-b hover:bg-gray-50' key={index}>
             <p className='max-sm:hidden'>{index}</p>
             <div className='flex items-center gap-2'>
-              <img src={item.userData.image} className='w-8 rounded-full' alt="" /> <p>{item.userData.name}</p>
+              <img src={item.userData.image} className='w-8 rounded-full' alt="" />
+              <button 
+                onClick={() => setSelectedPatient(item.userData)}
+                className="text-left hover:text-primary"
+              >
+                {item.userData.name}
+              </button>
             </div>
             <div>
               <p className='text-xs inline border border-primary px-2 rounded-full'>
@@ -56,6 +64,13 @@ const DoctorAppointments = () => {
           </div>
         ))}
       </div>
+
+      {selectedPatient && (
+        <PatientDetailsModal 
+          patient={selectedPatient} 
+          onClose={() => setSelectedPatient(null)}
+        />
+      )}
 
     </div>
   )
