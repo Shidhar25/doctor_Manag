@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { AppContext } from '../context/AppContext'
 import { assets } from '../assets/assets'
 import RelatedDoctors from '../components/RelatedDoctors'
+import PreConsultationForm from '../components/PreConsultationForm'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 
@@ -16,6 +17,9 @@ const Appointment = () => {
     const [docSlots, setDocSlots] = useState([])
     const [slotIndex, setSlotIndex] = useState(0)
     const [slotTime, setSlotTime] = useState('')
+    const [showPreConsultation, setShowPreConsultation] = useState(false)
+    const [consultationResult, setConsultationResult] = useState(null)
+    const [recommendedDoctors, setRecommendedDoctors] = useState([])
 
     const navigate = useNavigate()
 
@@ -85,11 +89,71 @@ const Appointment = () => {
 
     }
 
-    const bookAppointment = async () => {
+    const getSeverityMessage = (severity) => {
+        switch (severity) {
+            case 'serious':
+                return {
+                    title: 'Immediate Medical Attention Required',
+                    message: 'Based on your symptoms, you need immediate medical attention. This doctor may not be immediately available. We strongly recommend consulting one of our available specialists right away.',
+                    waitTime: 'Immediate attention needed',
+                    color: 'text-red-600',
+                    bgColor: 'bg-red-50',
+                    borderColor: 'border-red-200'
+                };
+            case 'moderate':
+                return {
+                    title: 'Prompt Medical Attention Recommended',
+                    message: 'Your condition requires attention soon. This doctor will be available in approximately 30 minutes, or you can consult other available specialists.',
+                    waitTime: '~30 minutes',
+                    color: 'text-yellow-600',
+                    bgColor: 'bg-yellow-50',
+                    borderColor: 'border-yellow-200'
+                };
+            default:
+                return {
+                    title: 'Regular Consultation',
+                    message: 'Your symptoms appear to be non-urgent. You can proceed with booking an appointment with this doctor or choose from other available specialists.',
+                    waitTime: '~1 hour',
+                    color: 'text-green-600',
+                    bgColor: 'bg-green-50',
+                    borderColor: 'border-green-200'
+                };
+        }
+    };
 
+    const findRecommendedDoctors = () => {
+        // Filter doctors based on availability and same speciality
+        const availableDoctors = doctors.filter(doc => 
+            doc._id !== docId && 
+            doc.speciality === docInfo.speciality
+        );
+
+        setRecommendedDoctors(availableDoctors.slice(0, 3));
+    };
+
+    const handlePreConsultation = () => {
         if (!token) {
             toast.warning('Login to book appointment')
             return navigate('/login')
+        }
+        setShowPreConsultation(true)
+    };
+
+    const handleConsultationSubmit = (result) => {
+        setConsultationResult(result);
+        setShowPreConsultation(false);
+        findRecommendedDoctors();
+    };
+
+    const bookAppointment = async () => {
+        if (!consultationResult) {
+            toast.warning('Please complete the pre-consultation assessment first')
+            return
+        }
+
+        if (!slotTime) {
+            toast.warning('Please select an appointment time')
+            return
         }
 
         const date = docSlots[slotIndex][0].datetime
@@ -101,8 +165,13 @@ const Appointment = () => {
         const slotDate = day + "_" + month + "_" + year
 
         try {
+            const { data } = await axios.post(backendUrl + '/api/user/book-appointment', {
+                docId,
+                slotDate,
+                slotTime,
+                preConsultation: consultationResult
+            }, { headers: { token } })
 
-            const { data } = await axios.post(backendUrl + '/api/user/book-appointment', { docId, slotDate, slotTime }, { headers: { token } })
             if (data.success) {
                 toast.success(data.message)
                 getDoctosData()
@@ -110,12 +179,10 @@ const Appointment = () => {
             } else {
                 toast.error(data.message)
             }
-
         } catch (error) {
             console.log(error)
             toast.error(error.message)
         }
-
     }
 
     useEffect(() => {
@@ -159,6 +226,51 @@ const Appointment = () => {
                 </div>
             </div>
 
+            {/* Pre-consultation Results */}
+            {consultationResult && (
+                <div className='sm:ml-72 sm:pl-4 mt-8'>
+                    <div className={`p-4 rounded-lg border ${getSeverityMessage(consultationResult.severity).borderColor} ${getSeverityMessage(consultationResult.severity).bgColor}`}>
+                        <h3 className={`font-semibold ${getSeverityMessage(consultationResult.severity).color}`}>
+                            {getSeverityMessage(consultationResult.severity).title}
+                        </h3>
+                        <p className='text-gray-600 mt-2'>
+                            {getSeverityMessage(consultationResult.severity).message}
+                        </p>
+                        <p className='text-sm font-medium mt-2'>
+                            Expected wait time: {getSeverityMessage(consultationResult.severity).waitTime}
+                        </p>
+                    </div>
+
+                    {recommendedDoctors.length > 0 && (
+                        <div className='mt-6'>
+                            <h3 className='font-semibold mb-3'>Alternative Available Doctors</h3>
+                            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
+                                {recommendedDoctors.map(doctor => (
+                                    <div 
+                                        key={doctor._id}
+                                        onClick={() => navigate(`/appointment/${doctor._id}`)}
+                                        className='border rounded-lg p-4 cursor-pointer hover:border-blue-500'
+                                    >
+                                        <div className='flex items-center gap-3'>
+                                            <img 
+                                                src={doctor.image} 
+                                                alt={doctor.name}
+                                                className='w-12 h-12 rounded-full object-cover'
+                                            />
+                                            <div>
+                                                <p className='font-medium'>{doctor.name}</p>
+                                                <p className='text-sm text-gray-600'>{doctor.speciality}</p>
+                                                <p className='text-xs text-blue-600 mt-1'>Next available: {doctor.next_available || 'Check availability'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Booking slots */}
             <div className='sm:ml-72 sm:pl-4 mt-8 font-medium text-[#565656]'>
                 <p >Booking slots</p>
@@ -177,8 +289,29 @@ const Appointment = () => {
                     ))}
                 </div>
 
-                <button onClick={bookAppointment} className='bg-primary text-white text-sm font-light px-20 py-3 rounded-full my-6'>Book an appointment</button>
+                {!consultationResult ? (
+                    <button 
+                        onClick={handlePreConsultation}
+                        className='bg-primary text-white text-sm font-light px-20 py-3 rounded-full my-6'
+                    >
+                        Start Pre-Consultation
+                    </button>
+                ) : (
+                    <button 
+                        onClick={bookAppointment}
+                        className='bg-primary text-white text-sm font-light px-20 py-3 rounded-full my-6'
+                    >
+                        Book Appointment
+                    </button>
+                )}
             </div>
+
+            {showPreConsultation && (
+                <PreConsultationForm
+                    onSubmit={handleConsultationSubmit}
+                    onClose={() => setShowPreConsultation(false)}
+                />
+            )}
 
             {/* Listing Releated Doctors */}
             <RelatedDoctors speciality={docInfo.speciality} docId={docId} />
