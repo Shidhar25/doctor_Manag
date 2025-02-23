@@ -7,6 +7,8 @@ import PreConsultationForm from '../components/PreConsultationForm'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 
+const socketUrl = import.meta.env.VITE_SOCKET_URL || 'https://video-calling-eight-sigma.vercel.app/';
+
 const Appointment = () => {
 
     const { docId } = useParams()
@@ -323,7 +325,7 @@ const Appointment = () => {
                     </button>
                     
                     <button 
-                        onClick={() => window.open('https://meet.google.com')}
+                        onClick={() => window.open(socketUrl)}
                         className='bg-blue-500 text-white text-sm font-light px-8 py-3 rounded-full flex items-center gap-2 hover:bg-blue-600 transition-colors'
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
